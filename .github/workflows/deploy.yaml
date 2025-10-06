@@ -1,0 +1,52 @@
+name: Deploy Vite App
+
+on:
+  push:
+    branches: [ _main ]
+  pull_request:
+    branches: [ _main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Decode SSH Key
+        run: |
+          echo "${{ secrets.SSH_KEY }}" | base64 -d > /tmp/ssh_key
+          chmod 600 /tmp/ssh_key
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Build application
+        run: npm run build
+
+      - name: Decode SSH Key and Deploy
+        env:
+          SSH_KEY_B64: ${{ secrets.SSH_KEY }}
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PORT: ${{ secrets.PORT }}
+        run: |
+          # Decode the SSH key
+          echo "$SSH_KEY_B64" | base64 -d > /tmp/ssh_key
+          chmod 600 /tmp/ssh_key
+          
+          # Create target directory if it doesn't exist
+          ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $USERNAME@$HOST "mkdir -p /var/www/visual"
+          
+          # Copy files using scp
+          scp -i /tmp/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r dist/* $USERNAME@$HOST:/var/www/visual/
+          
+          # Clean up
+          rm /tmp/ssh_key
