@@ -1,6 +1,6 @@
-import {useCallback, useEffect, useRef, useState} from "react"
-import ForceGraph3D, {type ForceGraphMethods} from "react-force-graph-3d"
-import {UnrealBloomPass} from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
+import { useCallback, useEffect, useRef, useState } from "react"
+import ForceGraph3D, { type ForceGraphMethods } from "react-force-graph-3d"
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import * as THREE from "three"
 
 interface Node {
@@ -21,16 +21,17 @@ interface GraphData {
 
 const DynamicGraph = () => {
     const [data, setData] = useState<GraphData>({
-        nodes: [{id: 0, color: Math.random() > 0.5 ? "red" : "blue", val: 1}],
+        nodes: [{ id: 0, color: Math.random() > 0.5 ? "red" : "blue", val: 1 }],
         links: [],
     })
 
     const graphRef = useRef<ForceGraphMethods<Node, Link> | undefined>(undefined)
 
     useEffect(() => {
-        // Wait for graph to be ready before adding bloom
+        // Wait for graph to be ready before adding bloom and camera setup
         const timer = setTimeout(() => {
             if (graphRef.current) {
+                // Add bloom effect
                 const bloomPass = new UnrealBloomPass(
                     new THREE.Vector2(window.innerWidth, window.innerHeight),
                     1.5,
@@ -41,6 +42,25 @@ const DynamicGraph = () => {
                 bloomPass.radius = 1
                 bloomPass.threshold = 0
                 graphRef.current.postProcessingComposer().addPass(bloomPass)
+
+                // Set initial camera position
+                const distance = 300;
+                graphRef.current.cameraPosition({ z: distance });
+
+                // Start camera orbit
+                let angle = 0;
+                const orbitInterval = setInterval(() => {
+                    if (graphRef.current) {
+                        graphRef.current.cameraPosition({
+                            x: distance * Math.sin(angle),
+                            z: distance * Math.cos(angle)
+                        });
+                        angle += Math.PI / 500; // Adjust speed of rotation
+                    }
+                }, 10);
+
+                // Cleanup function for the orbit interval
+                return () => clearInterval(orbitInterval);
             }
         }, 100)
 
@@ -50,16 +70,16 @@ const DynamicGraph = () => {
     useEffect(() => {
         const interval = setInterval(() => {
             // Add a new connected node every second
-            setData(({nodes, links}) => {
+            setData(({ nodes, links }) => {
                 const id = nodes.length
                 return {
                     nodes: [
                         ...nodes,
-                        {id, color: Math.random() > 0.5 ? "red" : "blue", val: 1},
+                        { id, color: Math.random() > 0.5 ? "red" : "blue", val: 1 },
                     ],
                     links: [
                         ...links,
-                        {source: id, target: Math.round(Math.random() * (id - 1))},
+                        { source: id, target: Math.round(Math.random() * (id - 1)) },
                     ],
                 }
             })
@@ -70,7 +90,7 @@ const DynamicGraph = () => {
 
     const handleClick = useCallback(
         (node: Node) => {
-            const {nodes, links} = data
+            const { nodes, links } = data
 
             // Remove node on click
             const newLinks = links.filter(
@@ -82,7 +102,7 @@ const DynamicGraph = () => {
                 n.id = idx
             })
 
-            setData({nodes: newNodes, links: newLinks})
+            setData({ nodes: newNodes, links: newLinks })
         },
         [data],
     )
@@ -97,6 +117,10 @@ const DynamicGraph = () => {
             nodeColor="color"
             nodeOpacity={1}
             linkOpacity={0.5}
+            linkDirectionalParticles={4}
+            linkDirectionalParticleSpeed={0.01}
+            linkDirectionalParticleWidth={1.1}
+            linkDirectionalParticleColor={() => '#46955eff'}
         />
     )
 }
@@ -104,7 +128,7 @@ const DynamicGraph = () => {
 function App() {
     return (
         <div className="font-sans w-screen h-screen">
-            <DynamicGraph/>
+            <DynamicGraph />
         </div>
     )
 }
