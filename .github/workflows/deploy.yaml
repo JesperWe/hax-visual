@@ -2,9 +2,9 @@ name: Deploy Vite App
 
 on:
   push:
-    branches: [ _main ]
+    branches: [ main ]
   pull_request:
-    branches: [ _main ]
+    branches: [ main ]
 
 jobs:
   deploy:
